@@ -1,7 +1,9 @@
 #include "utap/common.h"
 #include "utap/expression.h"
 
+#include <cassert>
 #include <type_traits>
+#include <stdexcept>
 
 
 namespace UppaalAD {
@@ -32,17 +34,57 @@ namespace UppaalAD {
   };
 
   template<UTAP::Constants::kind_t kind>
-  using  is_binary_v = is_binary<kind>::value;
+  constexpr bool is_binary_v = is_binary<kind>::value;
   
-  template<UTAP::Constants::kind_t>
+  template<UTAP::Constants::kind_t kind>
   struct Expression {
-    Expression (UTAP::expression_t& e) : expr(e) {}
+    Expression (UTAP::expression_t& e) : expr(e) {
+      assert(expr.getKind () == kind);
+    }
     
+
+    auto& getLeft ()  requires(is_binary_v<kind>) {return expr[0];}
+    auto& getRight ()  requires(is_binary_v<kind>) {return expr[1];}
+    auto getValue () const requires (kind ==UTAP::Constants::kind_t::CONSTANT) {return expr.getValue ();}
+    
+	
   private:
-  const UTAP::expression_t& expr;
+    UTAP::expression_t& expr;
   };
-  
+
 
   
+  template<class T, UTAP::Constants::kind_t k>
+  concept Visitor = requires (T t, Expression<k> e) {
+      t  (e);
+  };
+
+
+#define SUPPORTED_EXPR				\
+  X(PLUS)					\
+  X(MINUS)					\
+  X(MULT)					\
+  X(DIV)					\
+  X(CONSTANT)					\
+
+  template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+  
+  template<class T>
+  auto visit (T&& t, UTAP::expression_t& e) {
+    switch (e.getKind ()) {
+#define X(OP)								\
+      case UTAP::Constants::kind_t::OP:					\
+	if constexpr (Visitor<T,UTAP::Constants::kind_t::OP>) {		\
+	  return t (Expression<UTAP::Constants::kind_t::OP> (e));	\
+	}								\
+	else								\
+	  throw std::logic_error ("Unsupported 2");
+SUPPORTED_EXPR
+      #undef X
+     
+    default:
+      throw std::logic_error ("Unsupported");
+    };
+  }
   
 }
