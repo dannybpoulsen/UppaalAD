@@ -58,3 +58,28 @@ TEST_CASE ("Visitor VM") {
 			  , expr) == 3);
   
 }
+
+
+TEST_CASE ("Visitor VM") {
+  auto left = UTAP::expression_t::createDouble (1);
+  auto right = UTAP::expression_t::createDouble (2);
+  
+  auto expr = UTAP::expression_t::createBinary (UTAP::Constants::kind_t::PLUS,left,right);
+
+  
+  struct {
+    auto operator () (UppaalAD::Expression<UTAP::Constants::kind_t::PLUS> wrapper) -> double {
+      return UppaalAD::visit (*this,wrapper.getLeft()) + UppaalAD::visit (*this,wrapper.getRight ());
+    }
+
+    auto operator () (UppaalAD::Expression<UTAP::Constants::kind_t::CONSTANT> wrapper) ->double {
+      return wrapper.getDoubleValue ();
+    }
+    
+  } visitor;
+
+  
+  CHECK (UppaalAD::visit (visitor
+			  , expr) == 1.0+2.0);
+  
+}

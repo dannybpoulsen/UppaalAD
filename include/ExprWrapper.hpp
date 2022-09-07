@@ -1,3 +1,6 @@
+#ifndef _EXPRWRAPPER__
+#define _EXPRWRAPPER__
+
 #include "utap/common.h"
 #include "utap/expression.h"
 
@@ -7,34 +10,50 @@
 
 
 namespace UppaalAD {
+#define BINARY_OPS				\
+  X(PLUS)					\
+  X(MINUS)					\
+  X(MULT)					\
+  X(DIV)					\
+  X(BIT_AND)					\
+  X(BIT_OR)					\
+  X(BIT_XOR)					\
+  X(AND)					\
+  X(OR)						\
+  X(XOR)					\
+  X(LT)						\
+  X(LE)						\
+  X(EQ)						\
+  X(GE)						\
+  X(GT)
+
+#define CONSTANTS				\
+  X(CONSTANT)					\
+  
   template<UTAP::Constants::kind_t kind>
   struct is_binary : public std::false_type {};
-  
-  template<UTAP::Constants::kind_t kind> requires (kind == UTAP::Constants::kind_t::PLUS ||
-		  kind == UTAP::Constants::kind_t::MINUS ||
-		  kind == UTAP::Constants::kind_t::MULT ||
-		  kind == UTAP::Constants::kind_t::DIV  ||
-		  kind == UTAP::Constants::kind_t::BIT_AND ||
-		  kind == UTAP::Constants::kind_t::BIT_OR ||
-		  kind == UTAP::Constants::kind_t::BIT_XOR ||
-		  kind == UTAP::Constants::kind_t::BIT_LSHIFT ||
-		  kind == UTAP::Constants::kind_t::BIT_RSHIFT ||
-		  kind == UTAP::Constants::kind_t::AND ||
-		  kind == UTAP::Constants::kind_t::OR ||
-		  kind == UTAP::Constants::kind_t::XOR ||
-		  kind == UTAP::Constants::kind_t::OR ||
-		  kind == UTAP::Constants::kind_t::LT ||
-		  kind == UTAP::Constants::kind_t::LE ||
-		  kind == UTAP::Constants::kind_t::EQ ||
-		  kind == UTAP::Constants::kind_t::NEQ ||
-		  kind == UTAP::Constants::kind_t::GE ||
-		  kind == UTAP::Constants::kind_t::GT) 
-
-  struct is_binary<kind> : public std::true_type  {
+#define X(OP)								\
+  template<> 								\
+  struct is_binary<UTAP::Constants::kind_t::OP> : public std::true_type  { \
   };
+  BINARY_OPS
+#undef X
 
   template<UTAP::Constants::kind_t kind>
   constexpr bool is_binary_v = is_binary<kind>::value;
+  
+  
+  template<UTAP::Constants::kind_t kind>
+  struct is_constant : public std::false_type {};
+
+  template<>
+  struct is_constant<UTAP::Constants::kind_t::CONSTANT> : public std::true_type {};
+
+  template<UTAP::Constants::kind_t kind>
+  constexpr bool is_constant_v = is_constant<kind>::value;
+  
+  
+
   
   template<UTAP::Constants::kind_t kind>
   struct Expression {
@@ -42,12 +61,40 @@ namespace UppaalAD {
       assert(expr.getKind () == kind);
     }
     
-
+    auto& getType () const {return expr.getType ();}
+    auto getName () const requires (kind == UTAP::Constants::kind_t::IDENTIFIER) {
+      return expr.getSymbol().getName ();
+    }
+    
     auto& getLeft ()  requires(is_binary_v<kind>) {return expr[0];}
     auto& getRight ()  requires(is_binary_v<kind>) {return expr[1];}
-    auto getValue () const requires (kind ==UTAP::Constants::kind_t::CONSTANT) {return expr.getValue ();}
+    auto getValue () const requires (is_constant_v<kind>) {return expr.getValue ();}
+    auto getDoubleValue () const requires (is_constant_v<kind>) {
+      if (expr.getType ().isDouble())
+	return expr.getDoubleValue ();
+      return static_cast<double>(expr.getValue ());
+    }
     
-	
+    bool isDouble () const requires (is_constant_v<kind>) {
+      return expr.getType().isDouble ();
+    }
+
+    bool isOutput () const requires (kind == UTAP::Constants::kind_t::SYNC) {
+      return expr.getSync () == UTAP::Constants::synchronisation_t::SYNC_BANG;
+    }
+
+    bool isInput () const requires (kind == UTAP::Constants::kind_t::SYNC) {
+      return expr.getSync () == UTAP::Constants::synchronisation_t::SYNC_QUE;
+    }
+
+    auto& getChannelExpr () const requires (kind == UTAP::Constants::kind_t::SYNC) {
+      return expr[0];
+    }
+
+    auto getSyncType () const requires (kind == UTAP::Constants::kind_t::SYNC) {
+      return expr.getSync ();
+    }
+    
   private:
     UTAP::expression_t& expr;
   };
@@ -59,14 +106,10 @@ namespace UppaalAD {
       t  (e);
   };
 
-
-#define SUPPORTED_EXPR				\
-  X(PLUS)					\
-  X(MINUS)					\
-  X(MULT)					\
-  X(DIV)					\
-  X(CONSTANT)					\
-
+  
+ 
+  
+  
   template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
   
   template<class T>
@@ -79,8 +122,11 @@ namespace UppaalAD {
 	}								\
 	else								\
 	  throw std::logic_error ("Unsupported 2");
-SUPPORTED_EXPR
-      #undef X
+      BINARY_OPS
+	CONSTANTS
+	X(IDENTIFIER)
+	X(SYNC)
+#undef X
      
     default:
       throw std::logic_error ("Unsupported");
@@ -88,3 +134,6 @@ SUPPORTED_EXPR
   }
   
 }
+
+
+#endif
