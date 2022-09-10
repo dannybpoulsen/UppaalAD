@@ -8,15 +8,22 @@
 
 
 namespace UppaalAD {
+  enum class AttType {
+    Aggressor,
+    Defender
+  };
   class SystemCopier {
   public:
     SystemCopier (std::unordered_set<std::string>&&);
     ~SystemCopier ();
-    bool copyGlobalDeclarations (const std::string&, const UTAP::declarations_t&);
+    bool copyDeclarations (const std::string&, const UTAP::declarations_t&);
     bool copyTemplate (const std::string&, const UTAP::template_t&);
+    bool copyAttackerTemplate (const std::string&, const UTAP::template_t&,AttType );
     
     UTAP::Document& getDocument ();
   private:
+    bool copyFunction (const std::string&, const UTAP::function_t&);
+    
     struct Inner;
     std::unique_ptr<Inner> _impl;
     std::unordered_set<std::string> attackerActions;

@@ -7,6 +7,7 @@
 #include <cassert>
 #include <type_traits>
 #include <stdexcept>
+#include <iostream>
 
 
 namespace UppaalAD {
@@ -26,6 +27,28 @@ namespace UppaalAD {
   X(EQ)						\
   X(GE)						\
   X(GT)
+  
+#define UNARY_OPS 				\
+  X(NOT)					\
+  X(UNARY_MINUS)				\
+  X(POSTINCREMENT)				\
+  X(PREINCREMENT)				\
+  X(POSTDECREMENT)				\
+  X(PREDECREMENT)
+            
+  
+#define ASSIGN_OPS				\
+  X(ASSIGN)					\
+  X(ASSPLUS)					\
+  X(ASSMINUS)					\
+  X(ASSDIV)					\
+  X(ASSMOD)					\
+  X(ASSMULT)					\
+  X(ASSAND)					\
+  X(ASSOR)					\
+  X(ASSXOR)					\
+  X(ASSLSHIFT)					\
+  X(ASSRSHIFT)  
 
 #define CONSTANTS				\
   X(CONSTANT)					\
@@ -38,9 +61,35 @@ namespace UppaalAD {
   };
   BINARY_OPS
 #undef X
-
+  
   template<UTAP::Constants::kind_t kind>
   constexpr bool is_binary_v = is_binary<kind>::value;
+  
+
+  template<UTAP::Constants::kind_t kind>
+  struct is_unary : public std::false_type {};
+#define X(OP)								\
+  template<> 								\
+  struct is_unary<UTAP::Constants::kind_t::OP> : public std::true_type  { \
+  };
+  UNARY_OPS
+#undef X
+  
+  template<UTAP::Constants::kind_t kind>
+  constexpr bool is_unary_v = is_unary<kind>::value;
+  
+  template<UTAP::Constants::kind_t kind>
+  struct is_assign : public std::false_type {};
+#define X(OP)								\
+  template<> 								\
+  struct is_assign<UTAP::Constants::kind_t::OP> : public std::true_type  { \
+  };
+  ASSIGN_OPS
+#undef X
+  
+  template<UTAP::Constants::kind_t kind>
+  constexpr bool is_assign_v = is_assign<kind>::value;
+
   
   
   template<UTAP::Constants::kind_t kind>
@@ -65,7 +114,12 @@ namespace UppaalAD {
     auto getName () const requires (kind == UTAP::Constants::kind_t::IDENTIFIER) {
       return expr.getSymbol().getName ();
     }
+
+    auto& getAssignee ()  requires(is_assign_v<kind>) {return expr[0];}
+    auto& getExpr ()  requires(is_assign_v<kind>) {return expr[1];}
     
+    
+    auto& getInner ()  requires(is_unary_v<kind>) {return expr[0];}
     auto& getLeft ()  requires(is_binary_v<kind>) {return expr[0];}
     auto& getRight ()  requires(is_binary_v<kind>) {return expr[1];}
     auto getValue () const requires (is_constant_v<kind>) {return expr.getValue ();}
@@ -86,7 +140,7 @@ namespace UppaalAD {
     bool isInput () const requires (kind == UTAP::Constants::kind_t::SYNC) {
       return expr.getSync () == UTAP::Constants::synchronisation_t::SYNC_QUE;
     }
-
+    
     auto& getChannelExpr () const requires (kind == UTAP::Constants::kind_t::SYNC) {
       return expr[0];
     }
@@ -124,12 +178,15 @@ namespace UppaalAD {
 	  throw std::logic_error ("Unsupported 2");
       BINARY_OPS
 	CONSTANTS
+	UNARY_OPS
+	ASSIGN_OPS
 	X(IDENTIFIER)
 	X(SYNC)
 #undef X
      
     default:
-      throw std::logic_error ("Unsupported");
+	std::cerr << e << std::endl;
+	throw std::logic_error ("Unsupported");
     };
   }
   
