@@ -222,11 +222,41 @@ namespace UppaalAD {
     return true;
   }
     
+
+ const  std::unordered_set<std::string> blacklist_symbols {
+   "INT8_MIN",
+   "INT8_MAX",
+   "UINT8_MAX",
+   "UINT16_MAX",
+   "INT16_MIN",
+   "INT16_MAX",
+   "INT32_MIN",
+   "INT32_MAX",
+   "FLT_MIN",
+   "FLT_MAX",
+   "DBL_MIN",
+   "DBL_MAX" ,
+   "M_PI" ,
+   "M_PI_2" ,
+   "M_PI_4" ,
+   "M_E" ,
+   "M_LOG2E" ,
+   "M_LOG10E" ,
+   "M_LN2" ,
+   "M_LN10" ,
+   "M_1_PI" ,
+   "M_2_PI" ,
+   "M_2_SQRTPI" ,
+   "M_SQRT2" ,
+   "M_SQRT1_2"
+ };
   
-  bool SystemCopier::copyDeclarations (const std::string& pref, const UTAP::declarations_t& d) {
+  bool SystemCopier::copyDeclarations (const std::string& pref, const UTAP::declarations_t& d,bool copyAtt) {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
     for (auto& var : d.variables) {
       auto& symbol = var.uid;
+      if (blacklist_symbols.count(symbol.getName ()))
+	continue;
       _impl->builder.typePush (symbol.getType ());
       _impl->builder.addPosition (0,0,0,"");
       bool initialiser = false;
@@ -236,9 +266,11 @@ namespace UppaalAD {
       }
       if (!symbol.getType ().isChannel () || !attackerActions.count(symbol.getName ()))    
 	_impl->builder.declVar ((pref+symbol.getName ()).c_str (),initialiser); 
-      else 
-	_impl->builder.declVar (symbol.getName ().c_str(),initialiser);
-    }
+      else {
+	if (copyAtt)
+	  _impl->builder.declVar (symbol.getName ().c_str(),initialiser);
+      }
+      }
 
     for (auto& f : d.functions) {
       copyFunction (pref,f);
@@ -256,13 +288,12 @@ namespace UppaalAD {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
     
-    _impl->builder.procBegin ((pref+templ.uid.getName ()+std::string{"_ref"}).c_str(),templ.isTA,templ.type,templ.mode);
-    copyDeclarations (pref,templ);
+    _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
+    copyDeclarations (pref,templ,false);
     _impl->builder.procState ("RefineFail",false,false);
   
     
-    for (auto&  state : templ.states) {
-      
+    for (auto&  state : templ.states) {      
       bool hasInvariant = modifier.Modify (state.invariant);
       bool hasExponentialRate = modifier.Modify (state.exponentialRate);
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
@@ -308,8 +339,8 @@ namespace UppaalAD {
 	  _impl->builder.procSync (UTAP::Constants::synchronisation_t::SYNC_QUE);
 	  refineEdge = true;
 	}
-
       }
+      
       
       
       
@@ -320,14 +351,21 @@ namespace UppaalAD {
 	modifier.Modify (edge.guard);
 	_impl->builder.exprUnary (UTAP::Constants::kind_t::NOT);
 	_impl->builder.procGuard ();
+	
+	modifier.Modify (edge.sync[0]);
+	_impl->builder.procSync (UTAP::Constants::synchronisation_t::SYNC_QUE);  
+	
 	_impl->builder.procEdgeEnd (namer(beg).c_str (),"RefineFail");
-	  }
-      
+	
+      }
+
     }
+      
     _impl->builder.procStateInit (namer(templ.init).c_str ());
     
     _impl->builder.procEnd ();
     return true;
+    
   }
     
   
@@ -336,7 +374,7 @@ namespace UppaalAD {
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
     
     _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
-    copyDeclarations (pref,templ);
+    copyDeclarations (pref,templ,false);
     for (auto&  state : templ.states) {
       
       bool hasInvariant = modifier.Modify (state.invariant);

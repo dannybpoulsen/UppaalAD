@@ -16,7 +16,7 @@ namespace UppaalAD {
   public:
     SystemCopier (std::unordered_set<std::string>&&);
     ~SystemCopier ();
-    bool copyDeclarations (const std::string&, const UTAP::declarations_t&);
+    bool copyDeclarations (const std::string&, const UTAP::declarations_t&,bool copyAttackerSymbols);
     bool copyTemplate (const std::string&, const UTAP::template_t&);
     bool copyAttackerTemplate (const std::string&, const UTAP::template_t&,AttType );
     
