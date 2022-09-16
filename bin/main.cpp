@@ -69,12 +69,16 @@ int main (int argc, char* argv[]) {
 	copier.copyTemplate (sys2,t);
       }
     }
+    
+    
     writeXMLFile (output.c_str (),&copier.getDocument ());
+
+
     std::cerr << "Parsed " << std::endl;
   }
 
   else {
     std::cerr << "Fail Parsed " << model  << std::endl;
-  
+    
   }
 }

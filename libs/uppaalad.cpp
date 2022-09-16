@@ -251,9 +251,12 @@ namespace UppaalAD {
    "M_SQRT1_2"
  };
   
-  bool SystemCopier::copyDeclarations (const std::string& pref, const UTAP::declarations_t& d,bool copyAtt) {
+  bool SystemCopier::copyDeclarations (const std::string& pref, const UTAP::declarations_t& d,bool copyAtt,std::size_t skip) {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
+    std::size_t i = 0; 
     for (auto& var : d.variables) {
+      if (i++ < skip)
+	continue;
       auto& symbol = var.uid;
       if (blacklist_symbols.count(symbol.getName ()))
 	continue;
@@ -270,8 +273,8 @@ namespace UppaalAD {
 	if (copyAtt)
 	  _impl->builder.declVar (symbol.getName ().c_str(),initialiser);
       }
-      }
-
+    }
+    
     for (auto& f : d.functions) {
       copyFunction (pref,f);
     }
@@ -289,9 +292,15 @@ namespace UppaalAD {
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
     
     _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
-    copyDeclarations (pref,templ,false);
+    for (auto& t : templ.parameters) {
+      _impl->builder.typePush (t.getType ());
+      _impl->builder.declParameter (namer (t).c_str(),false);
+    }
+    
+    copyDeclarations (pref,templ,false);    
     _impl->builder.procState ("RefineFail",false,false);
-  
+
+   
     
     for (auto&  state : templ.states) {      
       bool hasInvariant = modifier.Modify (state.invariant);
@@ -372,11 +381,14 @@ namespace UppaalAD {
   bool SystemCopier::copyTemplate (const std::string& pref, const UTAP::template_t& templ) {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
-    
+    for (auto& t : templ.parameters) {
+      _impl->builder.typePush (t.getType ());
+      _impl->builder.declParameter (namer (t).c_str(),false);
+    }
     _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
+    
     copyDeclarations (pref,templ,false);
     for (auto&  state : templ.states) {
-      
       bool hasInvariant = modifier.Modify (state.invariant);
       bool hasExponentialRate = modifier.Modify (state.exponentialRate);
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
