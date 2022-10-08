@@ -27,7 +27,9 @@ namespace UppaalAD {
   X(EQ)						\
   X(GE)						\
   X(GT)						\
-  X(ARRAY)
+  X(NEQ)					\
+  X(ARRAY)					\
+  X(COMMA)
   
 #define UNARY_OPS 				\
   X(NOT)					\
@@ -54,6 +56,48 @@ namespace UppaalAD {
   X(ASSLSHIFT)					\
   X(ASSRSHIFT)  
 
+
+#define BUILTIN_F1				\
+  X(ABS_F)					\
+  X(FABS_F)					\
+  X(EXP_F)					\
+  X(EXP2_F)					\
+  X(EXPM1_F)					\
+  X(LN_F)					\
+  X(LOG_F)					\
+  X(LOG10_F)					\
+  X(LOG2_F)					\
+  X(LOG1P_F)					\
+  X(SQRT_F)					\
+  X(CBRT_F)					\
+  X(SIN_F)					\
+  X(COS_F)					\
+  X(TAN_F)					\
+  X(ASIN_F)					\
+  X(ACOS_F)					\
+  X(ATAN_F)					\
+  X(ACOSH_F)					\
+  X(ATANH_F)					\
+  X(ERF_F)					\
+  X(TGAMMA_F)					\
+  X(LGAMMA_F)					\
+  X(CEIL_F)					\
+  X(FLOOR_F)					\
+  X(TRUNC_F)					\
+  X(ROUND_F)					\
+  X(FINT_F)					\
+  X(ILOGB_F)					\
+  X(LOGB_F)					\
+  X(FPCLASSIFY_F)				\
+  X(ISFINITE_F)					\
+  X(ISINF_F)					\
+  X(ISNAN_F)					\
+  X(ISNORMAL_F)					\
+  X(SIGNBIT_F)					\
+  X(ISUNORDERED_F)				\
+  X(RANDOM_F)					\
+  X(RANDOM_POISSON_F)
+  
 #define CONSTANTS				\
   X(CONSTANT)					\
   
@@ -93,7 +137,7 @@ namespace UppaalAD {
   
   template<UTAP::Constants::kind_t kind>
   constexpr bool is_assign_v = is_assign<kind>::value;
-
+  
   
   
   template<UTAP::Constants::kind_t kind>
@@ -105,10 +149,36 @@ namespace UppaalAD {
   template<UTAP::Constants::kind_t kind>
   constexpr bool is_constant_v = is_constant<kind>::value;
   
+  
+  template<UTAP::Constants::kind_t kind>
+  struct is_builtin : public std::false_type {
+    static constexpr std::size_t params = 0;
+  };
+
+#define X(OP)					\
+  template<>								\
+  struct is_builtin<UTAP::Constants::kind_t::OP>: public std::true_type { \
+    static constexpr std::size_t params = 1;					\
+  };									\
+  
+  BUILTIN_F1
+#undef X
+
+  
+  template<UTAP::Constants::kind_t kind>
+  constexpr bool is_builtin_v = is_builtin<kind>::value;
+  
+  template<UTAP::Constants::kind_t kind>
+  constexpr std::size_t nb_params_v = is_builtin<kind>::params;
+
+  template<UTAP::Constants::kind_t kind>
+  constexpr bool is_builtin_1_v = is_builtin<kind>::value && nb_params_v<kind> == 1;
+  
+  
   template<UTAP::Constants::kind_t kind>
   struct is_nary : public std::false_type {};
 
-
+  
 #define X(OP)								\
   template<> 								\
   struct is_nary<UTAP::Constants::kind_t::OP> : public std::true_type  { \
@@ -128,6 +198,8 @@ namespace UppaalAD {
     Expression (UTAP::expression_t& e) : expr(e) {
       assert(expr.getKind () == kind);
     }
+
+    
     
     auto& getType () const {return expr.getType ();}
     auto getName () const requires (kind == UTAP::Constants::kind_t::IDENTIFIER) {
@@ -169,6 +241,11 @@ namespace UppaalAD {
     auto getSyncType () const requires (kind == UTAP::Constants::kind_t::SYNC) {
       return expr.getSync ();
     }
+    template<std::size_t i>
+    auto& getParam () const requires(is_builtin_v<kind> && i < nb_params_v<kind>) {
+      return expr[i];
+    }
+    
     
   private:
     UTAP::expression_t& expr;
@@ -202,9 +279,10 @@ namespace UppaalAD {
 	UNARY_OPS
 	NARY_OPS
 	ASSIGN_OPS
+	BUILTIN_F1
 	X(IDENTIFIER)
 	X(SYNC)
-	#undef X
+        #undef X
      
     default:
 	std::cerr << e << e.getKind () << std::endl;

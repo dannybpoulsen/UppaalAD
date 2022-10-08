@@ -27,13 +27,14 @@ namespace UppaalAD {
 										  builder(builder),
 										  pref(std::move(pref))
     {}
-
+    
     bool Modify (UTAP::expression_t expr) {
+      std::cerr << expr <<  std::endl;
       if (expr.empty()) {
 	return false;
       }
       else {
-	visit (*this,expr);
+	visit (*this,expr);	
 	return true;
       }
     }
@@ -93,6 +94,11 @@ namespace UppaalAD {
       builder.exprUnary (kind);
     }
 
+    template<UTAP::Constants::kind_t kind>
+    void operator() (UppaalAD::Expression<kind> wrapper ) requires (is_builtin_1_v<kind>) {
+      visit (*this,wrapper.template getParam<0> ());
+      builder.exprBuiltinFunction1 (kind);
+    }
     
     
   private:
@@ -139,12 +145,18 @@ namespace UppaalAD {
     int32_t visitWhileStatement(UTAP::WhileStatement* stat) override {
       builder.whileBegin ();
       exprMod.Modify (stat->cond);
-      std::cerr << "Build" << stat->stat.get ()->toString ("PP");
       stat->stat.get()->accept (this);
       builder.whileEnd ();
       return 0;
     }
-    int32_t visitDoWhileStatement(UTAP::DoWhileStatement* stat) override {return 0;}
+    int32_t visitDoWhileStatement(UTAP::DoWhileStatement* stat) override {
+      builder.doWhileBegin ();
+      stat->stat.get()->accept (this);
+      exprMod.Modify (stat->cond);
+      builder.doWhileEnd ();
+      return 0;
+    }
+    
     int32_t visitBlockStatement(UTAP::BlockStatement* stat) override {
       builder.blockBegin ();
       for (auto& symbol : stat->getFrame ()) {
@@ -162,12 +174,36 @@ namespace UppaalAD {
       builder.blockEnd ();
       return 0;
     }
-    int32_t visitSwitchStatement(UTAP::SwitchStatement* stat) override {return 0;}
-    int32_t visitCaseStatement(UTAP::CaseStatement* stat) override {return 0;}
-    int32_t visitDefaultStatement(UTAP::DefaultStatement* stat) override {return 0;}
-    int32_t visitIfStatement(UTAP::IfStatement* stat) override {return 0;}
-    int32_t visitBreakStatement(UTAP::BreakStatement* stat) override {return 0;}
-    int32_t visitContinueStatement(UTAP::ContinueStatement* stat) override {return 0;}
+    int32_t visitSwitchStatement(UTAP::SwitchStatement* stat) override {
+      throw std::logic_error ("Switch Unsupported");
+    }
+    int32_t visitCaseStatement(UTAP::CaseStatement* stat) override {
+      throw std::logic_error ("Case Unsupported");	
+    }
+    int32_t visitDefaultStatement(UTAP::DefaultStatement* stat) override {
+      throw std::logic_error ("Default Unsupported");	
+    
+    }
+    int32_t visitIfStatement(UTAP::IfStatement* stat) override {
+      builder.ifBegin ();
+      exprMod.Modify (stat->cond);
+      builder.ifCondition ();
+      stat->trueCase->accept (this);
+      
+      if (stat->falseCase) {
+	stat->falseCase->accept (this);
+      }
+
+      builder.ifEnd (stat->falseCase.get());
+
+      return 0;  
+    }
+    int32_t visitBreakStatement(UTAP::BreakStatement* stat) override {
+      throw std::logic_error ("Break Unsupported");
+    }
+    int32_t visitContinueStatement(UTAP::ContinueStatement* stat) override {
+      throw std::logic_error ("Break Unsupported");
+    }
     int32_t visitReturnStatement(UTAP::ReturnStatement* stat) override {
       bool val = false;
       if (!stat->value.empty ()) {
