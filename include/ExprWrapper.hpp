@@ -26,7 +26,8 @@ namespace UppaalAD {
   X(LE)						\
   X(EQ)						\
   X(GE)						\
-  X(GT)
+  X(GT)						\
+  X(ARRAY)
   
 #define UNARY_OPS 				\
   X(NOT)					\
@@ -35,7 +36,10 @@ namespace UppaalAD {
   X(PREINCREMENT)				\
   X(POSTDECREMENT)				\
   X(PREDECREMENT)
-            
+
+#define NARY_OPS 				\
+  X(LIST)					\
+  X(FUNCALL)
   
 #define ASSIGN_OPS				\
   X(ASSIGN)					\
@@ -94,13 +98,28 @@ namespace UppaalAD {
   
   template<UTAP::Constants::kind_t kind>
   struct is_constant : public std::false_type {};
-
+  
   template<>
   struct is_constant<UTAP::Constants::kind_t::CONSTANT> : public std::true_type {};
 
   template<UTAP::Constants::kind_t kind>
   constexpr bool is_constant_v = is_constant<kind>::value;
   
+  template<UTAP::Constants::kind_t kind>
+  struct is_nary : public std::false_type {};
+
+
+#define X(OP)								\
+  template<> 								\
+  struct is_nary<UTAP::Constants::kind_t::OP> : public std::true_type  { \
+  };
+  NARY_OPS
+#undef X
+
+  
+
+  template<UTAP::Constants::kind_t kind>
+  constexpr bool is_nary_v = is_nary<kind>::value;
   
 
   
@@ -118,6 +137,8 @@ namespace UppaalAD {
     auto& getAssignee ()  requires(is_assign_v<kind>) {return expr[0];}
     auto& getExpr ()  requires(is_assign_v<kind>) {return expr[1];}
     
+    auto size () requires (is_nary_v<kind>) {return expr.getSize();}
+    auto& operator[] (std::size_t i) requires (is_nary_v<kind>){return expr.get(i);}
     
     auto& getInner ()  requires(is_unary_v<kind>) {return expr[0];}
     auto& getLeft ()  requires(is_binary_v<kind>) {return expr[0];}
@@ -179,14 +200,15 @@ namespace UppaalAD {
       BINARY_OPS
 	CONSTANTS
 	UNARY_OPS
+	NARY_OPS
 	ASSIGN_OPS
 	X(IDENTIFIER)
 	X(SYNC)
-#undef X
+	#undef X
      
     default:
-	std::cerr << e << std::endl;
-	throw std::logic_error ("Unsupported");
+	std::cerr << e << e.getKind () << std::endl;
+      throw std::logic_error ("Unsupported");
     };
   }
   

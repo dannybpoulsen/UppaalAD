@@ -53,6 +53,15 @@ namespace UppaalAD {
       visit (*this,wrapper.getExpr ());
       builder.exprBinary (kind);
     }
+
+    template<UTAP::Constants::kind_t kind>
+    void operator() (Expression<kind> wrapper ) requires is_nary_v<kind> {
+      for (std::size_t i = 0; i < wrapper.size ();++i) {
+	visit (*this,wrapper[i]);
+      }
+      
+      builder.exprNary (kind,wrapper.size ());
+    }
     
     
     void operator() (UppaalAD::Expression<UTAP::Constants::kind_t::CONSTANT> wrapper ) {
@@ -123,7 +132,9 @@ namespace UppaalAD {
       exprMod.Modify (stat->step);
       stat->stat.get()->accept (this);
       builder.forEnd ();
+      return 0;
     }
+    
     int32_t visitIterationStatement(UTAP::IterationStatement* stat) override {return 0;}
     int32_t visitWhileStatement(UTAP::WhileStatement* stat) override {
       builder.whileBegin ();
@@ -157,7 +168,15 @@ namespace UppaalAD {
     int32_t visitIfStatement(UTAP::IfStatement* stat) override {return 0;}
     int32_t visitBreakStatement(UTAP::BreakStatement* stat) override {return 0;}
     int32_t visitContinueStatement(UTAP::ContinueStatement* stat) override {return 0;}
-    int32_t visitReturnStatement(UTAP::ReturnStatement* stat) override {return 0;}
+    int32_t visitReturnStatement(UTAP::ReturnStatement* stat) override {
+      bool val = false;
+      if (!stat->value.empty ()) {
+	exprMod.Modify (stat->value);
+	val = true;
+      }
+      builder.returnStatement (val);
+      return 0;
+    }
   private:
     const std::string pref;
     ExpressionModifier& exprMod;
