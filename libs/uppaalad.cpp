@@ -372,6 +372,15 @@ namespace UppaalAD {
       bool hasInvariant = modifier.Modify (state.invariant);
       bool hasExponentialRate = modifier.Modify (state.exponentialRate);
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
+
+      if (state.uid.getType().is (UTAP::Constants::COMMITTED)) {
+	_impl->builder.procStateCommit (namer(state.uid).c_str ());
+      }
+
+      if (state.uid.getType().is (UTAP::Constants::URGENT)) {
+	_impl->builder.procStateUrgent (namer(state.uid).c_str ());
+      }
+      
     }
 
     for (auto&  branch : templ.branchpoints) {
@@ -473,6 +482,15 @@ namespace UppaalAD {
       bool hasInvariant = modifier.Modify (state.invariant);
       bool hasExponentialRate = modifier.Modify (state.exponentialRate);
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
+
+      if (state.uid.getType().is (UTAP::Constants::COMMITTED)) {
+	_impl->builder.procStateCommit (namer(state.uid).c_str ());
+      }
+
+      if (state.uid.getType().is (UTAP::Constants::URGENT)) {
+	_impl->builder.procStateUrgent (namer(state.uid).c_str ());
+      }
+      
     }
 
     for (auto&  branch : templ.branchpoints) {
