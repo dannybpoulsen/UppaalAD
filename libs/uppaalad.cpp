@@ -29,7 +29,6 @@ namespace UppaalAD {
     {}
     
     bool Modify (UTAP::expression_t expr) {
-      std::cerr << expr <<  std::endl;
       if (expr.empty()) {
 	return false;
       }
@@ -99,7 +98,13 @@ namespace UppaalAD {
       visit (*this,wrapper.template getParam<0> ());
       builder.exprBuiltinFunction1 (kind);
     }
-    
+
+    void operator() (UppaalAD::Expression<UTAP::Constants::kind_t::DOT> wrapper ) {
+      auto base = wrapper.getBase ();
+      auto label = wrapper.indexName ();
+      visit (*this,base);
+      builder.exprDot (label.c_str());
+    }
     
   private:
     const std::unordered_set<std::string>& attackerActions;
@@ -121,7 +126,6 @@ namespace UppaalAD {
     }
     
     int32_t visitExprStatement(UTAP::ExprStatement* stat) override {
-      std::cerr << "In visit" << stat->toString ("ML") << std::endl;
       exprMod.Modify (stat->expr);
       builder.exprStatement ();
       return 0;
@@ -268,10 +272,6 @@ namespace UppaalAD {
       stmtMod.BuildStatement (stmt.get ());
     
     _impl->builder.declFuncEnd ();
-    
-    
-    std::cerr << type << std::endl;
-    
   
     
     return true;
@@ -305,6 +305,11 @@ namespace UppaalAD {
    "M_SQRT2" ,
    "M_SQRT1_2"
  };
+
+  bool isChannelType (auto&& type) {
+    return (type.isChannel () ||
+	    type.isArray () && type.getSub().isChannel ());;
+  }
   
   bool SystemCopier::copyDeclarations (const std::string& pref, const UTAP::declarations_t& d,bool copyAtt,std::size_t skip) {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
@@ -322,11 +327,17 @@ namespace UppaalAD {
 	modifier.Modify (var.expr);
 	initialiser = true;
       }
-      if (!symbol.getType ().isChannel () || !attackerActions.count(symbol.getName ()))    
+      if (!isChannelType(symbol.getType ())) {
 	_impl->builder.declVar ((pref+symbol.getName ()).c_str (),initialiser); 
+      }
       else {
-	if (copyAtt)
+	if (!attackerActions.count(symbol.getName ())) {   
+	  _impl->builder.declVar ((pref+symbol.getName ()).c_str (),initialiser);
+	    
+	}
+	else if (copyAtt) {
 	  _impl->builder.declVar (symbol.getName ().c_str(),initialiser);
+	}
       }
     }
     
@@ -355,7 +366,7 @@ namespace UppaalAD {
     copyDeclarations (pref,templ,false);    
     _impl->builder.procState ("RefineFail",false,false);
 
-   
+    
     
     for (auto&  state : templ.states) {      
       bool hasInvariant = modifier.Modify (state.invariant);
@@ -363,6 +374,10 @@ namespace UppaalAD {
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
     }
 
+    for (auto&  branch : templ.branchpoints) {
+      _impl->builder.procBranchpoint (namer(branch.uid).c_str ());
+    }
+    
     for (auto& edge : templ.edges) {
       bool refineEdge = false;
       UTAP::symbol_t beg;
@@ -382,6 +397,11 @@ namespace UppaalAD {
 				    edge.control,
 				    edge.actname.c_str ());
 
+
+      for (auto& t : edge.select) {
+	_impl->builder.typePush (t.getType ());
+	_impl->builder.procSelect (namer (t).c_str());
+      }
       
       modifier.Modify (edge.guard);
       _impl->builder.procGuard ();
@@ -397,7 +417,7 @@ namespace UppaalAD {
 	if (edge.sync.getSync () == UTAP::Constants::synchronisation_t::SYNC_QUE) {
 	  modifier.Modify (edge.sync);
 	}
-
+	
 	else {
 	  modifier.Modify (edge.sync[0]);
 	  _impl->builder.procSync (UTAP::Constants::synchronisation_t::SYNC_QUE);
@@ -412,6 +432,12 @@ namespace UppaalAD {
 				  namer(end).c_str());
       if (refineEdge) {
 	_impl->builder.procEdgeBegin (namer(beg).c_str (),"RefineFail",edge.control,edge.actname.c_str());
+
+	for (auto& t : edge.select) {
+	  _impl->builder.typePush (t.getType ());
+	  _impl->builder.procSelect (namer (t).c_str());
+	}
+	
 	modifier.Modify (edge.guard);
 	_impl->builder.exprUnary (UTAP::Constants::kind_t::NOT);
 	_impl->builder.procGuard ();
@@ -449,6 +475,10 @@ namespace UppaalAD {
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
     }
 
+    for (auto&  branch : templ.branchpoints) {
+      _impl->builder.procBranchpoint (namer(branch.uid).c_str ());
+    }
+    
     for (auto& edge : templ.edges) {
       UTAP::symbol_t beg;
       UTAP::symbol_t end;
@@ -467,6 +497,11 @@ namespace UppaalAD {
 				    edge.control,
 				    edge.actname.c_str ());
 
+      for (auto& t : edge.select) {
+	_impl->builder.typePush (t.getType ());
+	_impl->builder.procSelect (namer (t).c_str());
+      }
+      
       modifier.Modify (edge.guard);
       _impl->builder.procGuard ();
 

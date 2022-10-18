@@ -173,7 +173,17 @@ namespace UppaalAD {
 
   template<UTAP::Constants::kind_t kind>
   constexpr bool is_builtin_1_v = is_builtin<kind>::value && nb_params_v<kind> == 1;
+
+  template<UTAP::Constants::kind_t kind>
+  struct is_dot : public std::false_type {
+  };
+
+  template<>
+  struct is_dot<UTAP::Constants::kind_t::DOT> : public std::true_type {
+  };
   
+  template<UTAP::Constants::kind_t kind>
+  constexpr bool is_dot_v = is_dot<kind>::value;
   
   template<UTAP::Constants::kind_t kind>
   struct is_nary : public std::false_type {};
@@ -196,6 +206,12 @@ namespace UppaalAD {
   template<UTAP::Constants::kind_t kind>
   struct Expression {
     Expression (UTAP::expression_t& e) : expr(e) {
+      if constexpr (kind == UTAP::Constants::kind_t::DOT) {
+	if (!expr[0].getType ().isRecord ()) {
+	  throw std::logic_error ("Unsupported Dot Kind");
+	}
+      }
+      
       assert(expr.getKind () == kind);
     }
 
@@ -245,7 +261,15 @@ namespace UppaalAD {
     auto& getParam () const requires(is_builtin_v<kind> && i < nb_params_v<kind>) {
       return expr[i];
     }
-    
+
+    auto& getBase () const requires(is_dot_v<kind>) {
+      return expr[0];
+    }
+
+    auto indexName () const requires(is_dot_v<kind>) {
+      auto index = expr.getIndex ();
+      return expr[0].getType().getRecordLabel (index);
+    }
     
   private:
     UTAP::expression_t& expr;
@@ -282,6 +306,7 @@ namespace UppaalAD {
 	BUILTIN_F1
 	X(IDENTIFIER)
 	X(SYNC)
+	X(DOT)
         #undef X
      
     default:
