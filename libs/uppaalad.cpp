@@ -310,6 +310,97 @@ namespace UppaalAD {
     return (type.isChannel () ||
 	    type.isArray () && type.getSub().isChannel ());;
   }
+
+  void SystemCopier::copyType (const UTAP::type_t& t, ExpressionModifier& mod, UTAP::ParserBuilder::PREFIX prefix) {
+    if (t.isPrefix ()) {
+      if (t.isConstant()) {
+	prefix = UTAP::ParserBuilder::PREFIX_CONST;
+      }
+      else if (t.is (UTAP::Constants::URGENT) &&
+	       t.is (UTAP::Constants::BROADCAST) ) {
+	prefix = UTAP::ParserBuilder::PREFIX_URGENT_BROADCAST;
+      }
+
+      else if (t.is (UTAP::Constants::URGENT) ) {
+	prefix = UTAP::ParserBuilder::PREFIX_URGENT;
+      }
+
+      else if (t.is (UTAP::Constants::BROADCAST) ) {
+	prefix = UTAP::ParserBuilder::PREFIX_BROADCAST;
+      }
+
+      else {
+	std::logic_error ("Unsupported Prefix");
+    
+      }
+      
+    }
+    
+    if (t.is (UTAP::Constants::LABEL)) {
+      copyType (t.get(0),mod,prefix);
+    }
+    
+    else if (t.isRange ()) {
+      auto exprs = t.getRange ();
+      mod.Modify (exprs.first  );
+      mod.Modify (exprs.second );
+      
+      _impl->builder.typeBoundedInt (prefix);  
+    }
+    
+    else if (t.isInteger ()) {
+      _impl->builder.typeInt (prefix);
+    }
+
+    else if (t.isDouble ()) {
+      _impl->builder.typeDouble (prefix); 
+    }
+
+    else if (t.isBoolean ()) {
+      _impl->builder.typeBool (prefix); 
+    }
+
+    else if (t.isString ()) {
+       _impl->builder.typeString (prefix);
+       
+    }
+
+    else if (t.isArray ()) {
+      std::cerr << "Array" << std::endl;
+      std::cerr << "Sub " <<  t.getSub () << std::endl;
+      copyType (t.getSub (),mod);
+      std::cerr <<"Size " << t.getArraySize () << std::endl;
+      copyType (t.getArraySize (),mod);
+      
+      _impl->builder.typeArrayOfType (1);
+      
+    }
+
+    else if (t.isRecord ()) {
+      _impl->builder.typePush (t);
+      
+    }
+
+    else if (t.isChannel ()) {
+      _impl->builder.typeChannel (prefix);
+      
+    }
+
+    
+
+    else if (t.isClock()) {
+      _impl->builder.typeClock (prefix);
+    }
+    
+    else {
+      std::cerr << t << std::endl;
+      throw std::logic_error ("Unsupported Type");	
+    }
+
+    std::cerr << "Done" << std::endl;
+    
+  }
+    
   
   bool SystemCopier::copyDeclarations (const std::string& pref, const UTAP::declarations_t& d,bool copyAtt,std::size_t skip) {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
@@ -320,13 +411,16 @@ namespace UppaalAD {
       auto& symbol = var.uid;
       if (blacklist_symbols.count(symbol.getName ()))
 	continue;
-      _impl->builder.typePush (symbol.getType ());
+      //_impl->builder.typePush (symbol.getType ());
+      
       _impl->builder.addPosition (0,0,0,"");
       bool initialiser = false;
       if (!var.expr.empty ()) {
 	modifier.Modify (var.expr);
 	initialiser = true;
       }
+      copyType (symbol.getType (),modifier);
+      std::cerr << symbol.getType () << std::endl;
       if (!isChannelType(symbol.getType ())) {
 	_impl->builder.declVar ((pref+symbol.getName ()).c_str (),initialiser); 
       }
