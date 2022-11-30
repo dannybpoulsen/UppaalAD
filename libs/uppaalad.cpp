@@ -366,10 +366,7 @@ namespace UppaalAD {
     }
 
     else if (t.isArray ()) {
-      std::cerr << "Array" << std::endl;
-      std::cerr << "Sub " <<  t.getSub () << std::endl;
       copyType (t.getSub (),mod);
-      std::cerr <<"Size " << t.getArraySize () << std::endl;
       copyType (t.getArraySize (),mod);
       
       _impl->builder.typeArrayOfType (1);

@@ -37,6 +37,11 @@ int main (int argc, char* argv[]) {
   po::store(po::command_line_parser(argc, argv).options(description).run(), vm);
   po::notify(vm);
 
+  if (vm.count ("help")) {
+    std::cout << description << std::endl;
+    return 0;
+  }
+  
   if (vm.count("atttemplate")) {
     auto vals = vm["atttemplate"].as<std::vector<std::string>> ();
     std::copy (vals.begin(),vals.end(),std::inserter (attackertemplates,attackertemplates.begin()));
@@ -46,13 +51,14 @@ int main (int argc, char* argv[]) {
     auto vals = vm["attsymbols"].as<std::vector<std::string>> ();
     std::copy (vals.begin(),vals.end(),std::inserter (attackersymbols,attackersymbols.begin()));
   }
+
+  
   
   for (auto& s : attackertemplates)
     std::cerr << s << std::endl;
   
   UTAP::Document document;
   UppaalAD::SystemCopier copier{std::move(attackersymbols)};
-
   
   if (parseXMLFile (model.c_str(),&document,true,{std::filesystem::path {"."}}) == 0 ) {
     copier.copyDeclarations (sys1,document.getGlobals (),true);
