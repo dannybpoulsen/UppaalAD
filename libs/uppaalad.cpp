@@ -450,7 +450,7 @@ namespace UppaalAD {
     
     _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
     for (auto& t : templ.parameters) {
-      _impl->builder.typePush (t.getType ());
+      copyType (t.getType (),modifier);
       _impl->builder.declParameter (namer (t).c_str(),false);
     }
     
@@ -499,7 +499,8 @@ namespace UppaalAD {
 
 
       for (auto& t : edge.select) {
-	_impl->builder.typePush (t.getType ());
+	copyType (t.getType (),modifier);
+      
 	_impl->builder.procSelect (namer (t).c_str());
       }
       
@@ -534,7 +535,7 @@ namespace UppaalAD {
 	_impl->builder.procEdgeBegin (namer(beg).c_str (),"RefineFail",edge.control,edge.actname.c_str());
 
 	for (auto& t : edge.select) {
-	  _impl->builder.typePush (t.getType ());
+	  copyType (t.getType (),modifier);
 	  _impl->builder.procSelect (namer (t).c_str());
 	}
 	
@@ -563,7 +564,7 @@ namespace UppaalAD {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
     for (auto& t : templ.parameters) {
-      _impl->builder.typePush (t.getType ());
+      copyType (t.getType (),modifier);
       _impl->builder.declParameter (namer (t).c_str(),false);
     }
     _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
