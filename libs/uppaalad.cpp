@@ -249,10 +249,10 @@ namespace UppaalAD {
     for (int i = 1; i<type.size (); ++i) {
       auto paramtype = type[i];
       auto label = type.getLabel (i);
-      _impl->builder.typePush (paramtype);
+      copyType(paramtype,modifier);
       _impl->builder.declParameter (namer(label).c_str (),false);
     }
-    _impl->builder.typePush (rettype);
+    copyType (rettype,modifier);
     
     _impl->builder.declFuncBegin (namer (function.uid.getName ()).c_str());
 
@@ -374,7 +374,11 @@ namespace UppaalAD {
     }
 
     else if (t.isRecord ()) {
-      _impl->builder.typePush (t);
+      for (int i = 0; i < t.getRecordSize (); ++i) {
+	copyType (t.getSub (i),mod);
+	_impl->builder.structField (t.getRecordLabel (i).c_str ());
+      }
+      _impl->builder.typeStruct (prefix,t.getRecordSize ());
       
     }
 
@@ -387,6 +391,10 @@ namespace UppaalAD {
 
     else if (t.isClock()) {
       _impl->builder.typeClock (prefix);
+    }
+
+    else if (t.isVoid()) {
+      _impl->builder.typeVoid ();
     }
     
     else {
@@ -608,7 +616,7 @@ namespace UppaalAD {
 				    edge.actname.c_str ());
 
       for (auto& t : edge.select) {
-	_impl->builder.typePush (t.getType ());
+	copyType(t.getType (),modifier);
 	_impl->builder.procSelect (namer (t).c_str());
       }
       
