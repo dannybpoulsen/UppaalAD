@@ -259,7 +259,8 @@ namespace UppaalAD {
     
     for (std::size_t i = type.size ()-1; i < function.body->getFrame().getSize (); ++i) {
       auto& symbol = function.body->getFrame()[i];
-      _impl->builder.typePush (symbol.getType ());
+      copyType (symbol.getType (),modifier);
+      
       _impl->builder.addPosition (0,0,0,"");
       bool initialiser = false;
       if (!symbol.getType ().isChannel () || !attackerActions.count(symbol.getName ()))    
@@ -416,7 +417,6 @@ namespace UppaalAD {
       auto& symbol = var.uid;
       if (blacklist_symbols.count(symbol.getName ()))
 	continue;
-      //_impl->builder.typePush (symbol.getType ());
       
       _impl->builder.addPosition (0,0,0,"");
       bool initialiser = false;
