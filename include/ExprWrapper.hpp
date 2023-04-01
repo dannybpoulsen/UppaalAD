@@ -29,7 +29,9 @@ namespace UppaalAD {
   X(GT)						\
   X(NEQ)					\
   X(ARRAY)					\
-  X(COMMA)
+  X(COMMA)					\
+  X(FRACTION)
+  
   
 #define UNARY_OPS 				\
   X(NOT)					\
@@ -97,6 +99,7 @@ namespace UppaalAD {
   X(ISUNORDERED_F)				\
   X(RANDOM_F)					\
   X(RANDOM_POISSON_F)
+  
   
 #define CONSTANTS				\
   X(CONSTANT)					\

@@ -403,7 +403,6 @@ namespace UppaalAD {
       throw std::logic_error ("Unsupported Type");	
     }
 
-    std::cerr << "Done" << std::endl;
     
   }
     
@@ -425,7 +424,6 @@ namespace UppaalAD {
 	initialiser = true;
       }
       copyType (symbol.getType (),modifier);
-      std::cerr << symbol.getType () << std::endl;
       if (!isChannelType(symbol.getType ())) {
 	_impl->builder.declVar ((pref+symbol.getName ()).c_str (),initialiser); 
       }
@@ -528,9 +526,18 @@ namespace UppaalAD {
 	}
 	
 	else {
-	  modifier.Modify (edge.sync[0]);
-	  _impl->builder.procSync (UTAP::Constants::synchronisation_t::SYNC_QUE);
-	  refineEdge = true;
+	  if (edge.sync.getSync () == UTAP::Constants::synchronisation_t::SYNC_BANG &&
+	      !attackerActions.count(edge.sync[0].getSymbol ().getName ()) 
+	      ){
+	    modifier.Modify (edge.sync);
+	    
+	  }
+	  else {
+	      
+	    modifier.Modify (edge.sync[0]);
+	    _impl->builder.procSync (UTAP::Constants::synchronisation_t::SYNC_QUE);
+	    refineEdge = true;
+	  }
 	}
       }
       
@@ -569,6 +576,7 @@ namespace UppaalAD {
     
   
   bool SystemCopier::copyTemplate (const std::string& pref, const UTAP::template_t& templ) {
+    std::cerr << "Copy: " << templ.uid.getName () << std::endl;
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
     for (auto& t : templ.parameters) {
@@ -581,6 +589,7 @@ namespace UppaalAD {
     for (auto&  state : templ.states) {
       bool hasInvariant = modifier.Modify (state.invariant);
       bool hasExponentialRate = modifier.Modify (state.exponentialRate);
+      std::cerr << "Exponential for" << state.uid.getName () << " "  << state.exponentialRate << std::endl;
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
 
       if (state.uid.getType().is (UTAP::Constants::COMMITTED)) {
