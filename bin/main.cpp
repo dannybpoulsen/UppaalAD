@@ -58,11 +58,15 @@ int main (int argc, char* argv[]) {
     std::cerr << s << std::endl;
   
   UTAP::Document document;
+
+  
+  
   UppaalAD::SystemCopier copier{std::move(attackersymbols)};
   
-  if (parseXMLFile (model.c_str(),&document,true,{std::filesystem::path {"."}}) == 0 ) {
+  if (parseXMLFile (model.c_str(),&document,true,{std::filesystem::path {"."}}) == 0 ) {  
     copier.copyDeclarations (sys1,document.getGlobals (),true);
     copier.copyDeclarations (sys2,document.getGlobals (),false);
+
     
     for (auto& t: document.getTemplates ()) {
       if (attackertemplates.count (std::string {t.uid.getName ()})) {	  
@@ -74,6 +78,13 @@ int main (int argc, char* argv[]) {
 	copier.copyTemplate (sys1,t);
 	copier.copyTemplate (sys2,t);
       }
+    }
+
+
+    for (auto& t: document.getProcesses ()) {
+      copier.copyInstance (t,sys1);
+      copier.copyInstance (t,sys2);
+      
     }
     
     

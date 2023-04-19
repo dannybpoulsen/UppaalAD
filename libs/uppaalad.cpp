@@ -399,7 +399,6 @@ namespace UppaalAD {
     }
     
     else {
-      std::cerr << t << std::endl;
       throw std::logic_error ("Unsupported Type");	
     }
 
@@ -445,6 +444,27 @@ namespace UppaalAD {
     return true;
   }
 
+  void SystemCopier::copyInstance (const UTAP::instance_t& instance,const std::string& pref) {
+    ExpressionModifier modifier (_impl->builder,pref,attackerActions);
+    auto namer = [pref](const auto& orig){return pref+orig.getName();};
+
+    for (auto& p : instance.parameters) {
+     modifier.Modify (instance.mapping.at(p));
+    }
+  
+    if (instance.unbound)
+      throw std::runtime_error ("No partial instantiations are4 allowed");
+    
+    
+    if (instance.arguments != instance.parameters.getSize () )
+      throw std::runtime_error ("No arguments are allowed");
+
+    _impl->builder.instantiationBegin (namer (instance.uid).c_str(),0,namer(instance.templ->uid).c_str());
+    _impl->builder.instantiationEnd (namer (instance.uid).c_str(),0,namer(instance.templ->uid).c_str(),instance.arguments);
+    _impl->builder.process (namer (instance.uid).c_str());
+    
+    std::cerr << instance.uid.getName () << std::endl;
+  }
 
   bool SystemCopier::copyAttackerTemplate (const std::string& pref, const UTAP::template_t& templ, AttType type) {
     if (type == AttType::Aggressor) {
@@ -576,7 +596,6 @@ namespace UppaalAD {
     
   
   bool SystemCopier::copyTemplate (const std::string& pref, const UTAP::template_t& templ) {
-    std::cerr << "Copy: " << templ.uid.getName () << std::endl;
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
     for (auto& t : templ.parameters) {
@@ -589,7 +608,6 @@ namespace UppaalAD {
     for (auto&  state : templ.states) {
       bool hasInvariant = modifier.Modify (state.invariant);
       bool hasExponentialRate = modifier.Modify (state.exponentialRate);
-      std::cerr << "Exponential for" << state.uid.getName () << " "  << state.exponentialRate << std::endl;
       _impl->builder.procState (namer(state.uid).c_str (),hasInvariant,hasExponentialRate);
 
       if (state.uid.getType().is (UTAP::Constants::COMMITTED)) {

@@ -25,7 +25,7 @@ namespace UppaalAD {
     bool copyTemplate (const std::string&, const UTAP::template_t&);
     bool copyAttackerTemplate (const std::string&, const UTAP::template_t&,AttType );
     void copyType (const UTAP::type_t& t, ExpressionModifier&, UTAP::ParserBuilder::PREFIX = UTAP::ParserBuilder::PREFIX::PREFIX_NONE);
-    
+    void copyInstance (const UTAP::instance_t& instance, const std::string& pref);
     UTAP::Document& getDocument ();
   private:
     bool copyFunction (const std::string&, const UTAP::function_t&);
