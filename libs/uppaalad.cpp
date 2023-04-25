@@ -74,9 +74,12 @@ namespace UppaalAD {
     }
 
     void operator() (UppaalAD::Expression<UTAP::Constants::kind_t::IDENTIFIER> wrapper ) {
-      if (attackerActions.count (wrapper.getName ()))
+      
+      if (attackerActions.count (wrapper.getName ())) {
 	builder.exprId (wrapper.getName ().c_str());
+      }
       else {
+	
 	builder.exprId ((pref+wrapper.getName ()).c_str());
       }
     }
@@ -237,6 +240,13 @@ namespace UppaalAD {
     return _impl->doc;
   }
 
+  void SystemCopier::declParameter (const std::string& name, const UTAP::type_t& type, ExpressionModifier& mod) {
+    bool ref = type.is(UTAP::Constants::REF);
+    copyType ((ref ? type.get(0) : type),mod);
+    _impl->builder.declParameter (name.c_str (),ref);
+      
+  }
+  
   bool SystemCopier::copyFunction (const std::string& pref, const UTAP::function_t& function) {
     auto namer = [pref](const auto& orig){return pref+orig;};
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
@@ -249,8 +259,7 @@ namespace UppaalAD {
     for (int i = 1; i<type.size (); ++i) {
       auto paramtype = type[i];
       auto label = type.getLabel (i);
-      copyType(paramtype,modifier);
-      _impl->builder.declParameter (namer(label).c_str (),false);
+      declParameter (namer(label),paramtype,modifier);
     }
     copyType (rettype,modifier);
     
@@ -463,7 +472,6 @@ namespace UppaalAD {
     _impl->builder.instantiationEnd (namer (instance.uid).c_str(),0,namer(instance.templ->uid).c_str(),instance.arguments);
     _impl->builder.process (namer (instance.uid).c_str());
     
-    std::cerr << instance.uid.getName () << std::endl;
   }
 
   bool SystemCopier::copyAttackerTemplate (const std::string& pref, const UTAP::template_t& templ, AttType type) {
@@ -476,8 +484,7 @@ namespace UppaalAD {
     
     _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
     for (auto& t : templ.parameters) {
-      copyType (t.getType (),modifier);
-      _impl->builder.declParameter (namer (t).c_str(),false);
+      declParameter (namer(t),t.getType(),modifier);
     }
     
     copyDeclarations (pref,templ,false);    
@@ -599,8 +606,7 @@ namespace UppaalAD {
     ExpressionModifier modifier (_impl->builder,pref,attackerActions);
     auto namer = [pref](const auto& orig){return pref+orig.getName();};
     for (auto& t : templ.parameters) {
-      copyType (t.getType (),modifier);
-      _impl->builder.declParameter (namer (t).c_str(),false);
+      declParameter (namer(t),t.getType (),modifier);
     }
     _impl->builder.procBegin ((pref+templ.uid.getName ()).c_str(),templ.isTA,templ.type,templ.mode);
     

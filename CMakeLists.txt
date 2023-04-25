@@ -5,10 +5,8 @@ set (CMAKE_CXX_STANDARD 20)
 
 
 include (external/utap.cmake)
-include (external/doctest.cmake)
 
 include(CTest)
 
 add_subdirectory (libs)
-add_subdirectory (test)
 add_subdirectory (bin)

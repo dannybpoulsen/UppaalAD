@@ -29,7 +29,7 @@ namespace UppaalAD {
     UTAP::Document& getDocument ();
   private:
     bool copyFunction (const std::string&, const UTAP::function_t&);
-    
+    void declParameter (const std::string&, const UTAP::type_t&,ExpressionModifier&);
     struct Inner;
     std::unique_ptr<Inner> _impl;
     std::unordered_set<std::string> attackerActions;
